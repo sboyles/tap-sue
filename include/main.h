@@ -5,10 +5,10 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+#include <stdlib.h>
+
 #include "fileio.h"
-#include "bush.h"
 #include "networks.h"
-#include "tap.h"
 #include "datastructures.h"
 #include "utils.h"
 #include "convexcombination.h"

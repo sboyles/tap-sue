@@ -4,254 +4,13 @@
 // Reading network files //
 ///////////////////////////
 
-network_type *readParametersFile(algorithmBParameters_type *thisRun,
-                                 char *filename) {
-    /* Read AlgorithmB parameters from a file.  Also read and load
-     * network data from the indicated files, and return the pointer
-     * to the network data structure created in this way. */
-	int status;
-    int c;
-	char fullLine[STRING_SIZE * 2]; // Double-length to allow concatenation
-    char filePath[STRING_SIZE], dataPath[STRING_SIZE];
-    char networkFileName[STRING_SIZE];
-    stringList_type *tripsFile = NULL, *newTripsFile = NULL;
-	char metadataTag[STRING_SIZE], metadataValue[STRING_SIZE];
-	FILE *parametersFile = openFile(filename, "r");
-    int numBatches = 1;
-    network_type *network = newScalar(network_type);
-#ifdef PARALLELISM
-    thisRun->numThreads = getNumCores();
-#endif
-
-	/* Initialize (set mandatory values to missing, mandatory strings to length
-	   zero, others to defaults).  Note that some parameters are initialized
-       by initializeAlgorithmBParameters, assuming that this was called for
-       thisRun when it was created.  These default values are not repeated
-       here. */
-    networkFileName[0] = '\0';
-    strcpy(filePath, "net/");
-    strcpy(dataPath, "net/");
-    strcpy(thisRun->flowsFile, "flows.txt");
-    network->numClasses = 0;
-
-	/* Process parameter file */
-	while (!feof(parametersFile)) {
-		do {
-			if (fgets(fullLine, STRING_SIZE, parametersFile) == NULL) break;
-			status = parseMetadata(fullLine, metadataTag, metadataValue);
-		} while (status == BLANK_LINE || status == COMMENT);
-		if        (strcmp(metadataTag, "NETWORK FILE") == 0) {
-			strcpy(networkFileName, metadataValue);
-		} else if (strcmp(metadataTag, "TRIPS FILE") == 0) {
-			newTripsFile = newScalar(stringList_type);
-            strcpy(newTripsFile->string, metadataValue);
-            newTripsFile->prev = tripsFile;
-            tripsFile = newTripsFile; 
-            network->numClasses++;
-		} else if (strcmp(metadataTag, "CONVERGENCE GAP") == 0) {
-            thisRun->convergenceGap = atof(metadataValue);
-		} else if (strcmp(metadataTag, "MAX ITERATIONS") == 0) {
-            thisRun->maxIterations = atoi(metadataValue);
-		} else if (strcmp(metadataTag, "MAX RUN TIME") == 0) {
-            thisRun->maxTime = atof(metadataValue);
-		} else if (strcmp(metadataTag, "FILE PATH") == 0) {
-            strcpy(filePath, metadataValue);
-		} else if (strcmp(metadataTag, "FLOWS FILE") == 0) {
-            strcpy(thisRun->flowsFile, metadataValue);
-		} else if (strcmp(metadataTag, "GAP FUNCTION") == 0) {
-			if    (strcmp(metadataValue, "RELATIVE GAP") == 0)
-				thisRun->gapFunction = RELATIVE_GAP_1;
-			else if (strcmp(metadataValue, "RELATIVE GAP 2") == 0)
-				thisRun->gapFunction = RELATIVE_GAP_2;
-			else if (strcmp(metadataValue, "AVERAGE EXCESS COST") == 0)
-				thisRun->gapFunction = AEC;
-			else if (strcmp(metadataValue, "MAXIMUM EXCESS COST") == 0)
-				thisRun->gapFunction = MEC;
-			else
-				fatalError("Unknown gap function %s\n", metadataValue);
-		} else if (strcmp(metadataTag, "OMIT BECKMANN") == 0) {
-            thisRun->calculateBeckmann = FALSE;
-		} else if (strcmp(metadataTag, "DEMAND MULTIPLIER") == 0) {
-            thisRun->demandMultiplier = atof(metadataValue);
-		} else if (strcmp(metadataTag, "STORE MATRICES") == 0) {
-            thisRun->storeMatrices = TRUE;
-		} else if (strcmp(metadataTag, "DATA PATH") == 0) {
-            strcpy(dataPath, metadataValue);
-		} else if (strcmp(metadataTag, "NUMBER OF BATCHES") == 0) {
-            numBatches = atoi(metadataValue);
-		} else if (strcmp(metadataTag, "BATCH STEM") == 0) {
-            strncpy(thisRun->batchStem, metadataValue,
-                    sizeof(thisRun->batchStem) - 1);
-		} else if (strcmp(metadataTag, "MATRIX STEM") == 0) {
-            strncpy(thisRun->matrixStem, metadataValue, 
-                    sizeof(thisRun->matrixStem) - 1);
-		} else if (strcmp(metadataTag, "WARM START") == 0) {
-            thisRun->warmStart = TRUE;
-		} else if (strcmp(metadataTag, "NUMBER OF THREADS") == 0) {
-#ifdef PARALLELISM
-            thisRun->numThreads = atoi(metadataValue);
-#else
-            warning(LOW_NOTIFICATIONS, "This is the serial build of tap-b, "
-                                       "ignoring specified number of threads.");
-#endif
-		} else if (strcmp(metadataTag, "INNER ITERATIONS") == 0) {
-            thisRun->innerIterations = atoi(metadataValue);
-		} else if (strcmp(metadataTag, "SHIFT REPETITIONS") == 0) {
-            thisRun->shiftReps = atoi(metadataValue);
-		} else if (strcmp(metadataTag, "RESCAN AFTER SHIFT") == 0) {
-            thisRun->rescanAfterShift = TRUE;
-		} else if (strcmp(metadataTag, "THRESHOLD GAP") == 0) {
-            thisRun->thresholdGap = atof(metadataValue);
-		} else if (strcmp(metadataTag, "THRESHOLD AEC") == 0) {
-            thisRun->thresholdAEC = atof(metadataValue);
-		} else if (strcmp(metadataTag, "MIN COST DIFFERENCE") == 0) {
-            thisRun->minCostDifference = atof(metadataValue);
-		} else if (strcmp(metadataTag, "MIN LINK FLOW SHIFT") == 0) {
-            thisRun->minLinkFlowShift = atof(metadataValue);
-		} else if (strcmp(metadataTag, "MIN LINK FLOW") == 0) {
-            thisRun->minLinkFlow = atof(metadataValue);
-		} else if (strcmp(metadataTag, "MIN REDUCED COST") == 0) {
-            thisRun->minReducedCost = atof(metadataValue);
-		} else if (strcmp(metadataTag, "MIN DERIVATIVE") == 0) {
-            thisRun->minDerivative = atof(metadataValue);
-		} else if (strcmp(metadataTag, "NEWTON STEP") == 0) {
-            thisRun->newtonStep = atof(metadataValue);
-		} else if (strcmp(metadataTag, "NEWTON SHIFTS") == 0) {
-            thisRun->numNewtonShifts = atoi(metadataValue);
-		} else if (strcmp(metadataTag, "SHORTEST PATH QUEUE DISCIPLINE") == 0) {
-			if    (strcmp(metadataValue, "DEQUE") == 0)
-				thisRun->SPQueueDiscipline = DEQUE;
-			else if (strcmp(metadataValue, "FIFO") == 0)
-				thisRun->SPQueueDiscipline = FIFO;
-			else if (strcmp(metadataValue, "LIFO") == 0)
-				thisRun->SPQueueDiscipline = LIFO;
-			else
-				fatalError("Unknown queue discipline %s\n", metadataValue);
-		} else if (strcmp(metadataTag, "LINK COST UPDATE") == 0) {
-			if    (strcmp(metadataValue, "EXACT") == 0)
-				thisRun->linkShiftB = &exactCostUpdate;
-			else if (strcmp(metadataValue, "LINEAR") == 0)
-				thisRun->linkShiftB = &linearCostUpdate;
-			else if (strcmp(metadataValue, "NONE") == 0)
-				thisRun->linkShiftB = &noCostUpdate;
-			else
-				fatalError("Unknown link cost update %s\n", metadataValue);
-		} else if (strcmp(metadataTag, "STORE BUSHES") == 0) {
-            thisRun->storeBushes = TRUE;
-		} else if (strcmp(metadataTag, "REUSE FIRST BUSH") == 0) {
-            thisRun->reuseFirstBush = TRUE;
-		} else if (strcmp(metadataTag, "EXCLUDE GAP TIME") == 0) {
-            thisRun->includeGapTime = FALSE;
-		} else if (strcmp(metadataTag, "INITIAL BUSH") == 0) {
-			if    (strcmp(metadataValue, "SP_TREE") == 0)
-				thisRun->createInitialBush = &initialBushShortestPath;
-			else
-				fatalError("Unknown initial bush method %s\n", metadataValue);
-		} else if (strcmp(metadataTag, "TOPOLOGICAL ORDER") == 0) {
-			if    (strcmp(metadataValue, "STANDARD") == 0)
-				thisRun->topologicalOrder = &genericTopologicalOrder;
-			else
-				fatalError("Unknown topological sort %s\n", metadataValue);
-		} else {
-			warning(MEDIUM_NOTIFICATIONS,
-			        "Ignoring unknown metadata tag in parameters file - %s\n",
-			        metadataTag);
-		}
-    }
-    fclose(parametersFile);
-
-    /* Check mandatory elements are present and validate input */
-	if (strlen(networkFileName) == 0)
-		fatalError("Missing network file!");
-	if (network->numClasses <= 0)
-		fatalError("Missing demand file!");
-	if (thisRun->maxIterations == INT_MAX
-	        && thisRun->maxTime == INFINITY
-	        && thisRun->convergenceGap == 0)
-		warning(LOW_NOTIFICATIONS,
-		        "No termination criteria specified... program will run until "
-		        "interrupted manually.\n");
-    if (thisRun->demandMultiplier < 0)
-        fatalError("Negative demand multiplier.");
-    if (numBatches < 1)
-        fatalError("Must use at least one batch.");
-    if (thisRun->numThreads < 1)
-        fatalError("Must use at least one thread.");
-    if (thisRun->innerIterations < 0)
-        warning(LOW_NOTIFICATIONS, "Negative number of inner iterations.");
-    if (thisRun->shiftReps < 0)
-        warning(LOW_NOTIFICATIONS, "Negative number of shift repetitions.");
-
-    /* Concatenate paths, read network */
-    int saveDigits = ceil(log10(network->numClasses)) + 4; // #classes + ".bin"
-    snprintf(fullLine, 2*STRING_SIZE, "%s%s", filePath, networkFileName);
-    strncpy(networkFileName, fullLine, STRING_SIZE - 1);
-    snprintf(fullLine, 2*STRING_SIZE - saveDigits, "%s%s",
-            dataPath, thisRun->batchStem);
-    strncpy(thisRun->batchStem, fullLine, STRING_SIZE - 1);
-    snprintf(fullLine, 2*STRING_SIZE - saveDigits, "%s%s",
-            dataPath, thisRun->matrixStem);
-    strncpy(thisRun->matrixStem, fullLine, STRING_SIZE - 1);
-    char **tripsFiles = (char **)malloc(network->numClasses * sizeof(char *));
-    if (tripsFiles == NULL) fatalError("Can't set up trip file array.\n");
-    for (c = network->numClasses - 1; c >= 0; c--) {
-        tripsFiles[c] = (char *)malloc(2 * STRING_SIZE * sizeof(char));
-        if (tripsFiles[c] == NULL) fatalError("Can't setup trip file array.\n");
-        snprintf(tripsFiles[c], 2*STRING_SIZE - 1, "%s%s",
-                 filePath, tripsFile->string);
-        printf("Flows%d: %s (%s)\n", c, thisRun->flowsFile, tripsFiles[c]);
-        newTripsFile = tripsFile; /* Save for garbage collection */
-        tripsFile = tripsFile->prev;
-        deleteScalar(newTripsFile);
-    }
-    
-    /* garbage collection */
-    readOBANetwork(network, networkFileName, tripsFiles, network->numClasses,
-                   thisRun->demandMultiplier);
-    if (thisRun->storeMatrices == TRUE) {
-        writeBinaryMatrices(network, thisRun->matrixStem);
-    }
-    for (c = network->numClasses - 1; c >= 0; c--) {
-        free(tripsFiles[c]);
-    }
-    free(tripsFiles);
-    setBatches(network, network->numOrigins / numBatches, thisRun->warmStart,
-               thisRun->storeMatrices, thisRun->matrixStem);
-    return network;
-}
-
-/*
- * Write OD matrices into binary files, one for each batch.
- * For use in later warm-starts or assignments.
- */
-void writeBinaryMatrices(network_type *network, char *matrixStem) {
-    int batch, r, origin;
-    char filename[STRING_SIZE];
-    FILE* matrixFile;
-
-    for (batch = 0; batch < network->numBatches; batch++) {
-        sprintf(filename, "%s%d.bin", matrixStem, batch);
-        matrixFile = openFile(filename, "wb");
-        fwrite(&batch, sizeof(batch), 1, matrixFile); /* Header */
-        for (r = 0; r < network->batchSize; r++) {
-            if (outOfOrigins(network, r) == TRUE) break;
-            origin = r + batch * network->batchSize;
-            fwrite(network->demand[origin], sizeof(network->demand[origin][0]),
-                   network->numZones, matrixFile);
-        }
-        fclose(matrixFile);
-    }
-}
-
-void readOBANetwork(network_type *network, char *linkFileName, 
-                    char **tripFileName, int numClasses,
-                    double defaultDemandMultiplier) {
+void readTntpNetwork(network_type *network, char *linkFileName, 
+                     char *tripFileName) {
     int i, j, r = 0, c;
     int check;
     int numParams, status;
     double demand, totalDemandCheck = 0;
     double defaultTollFactor, defaultDistanceFactor;
-    double demandMultiplier = IS_MISSING;
 
     char fullLine[STRING_SIZE], trimmedLine[STRING_SIZE], *token;
     char metadataTag[STRING_SIZE], metadataValue[STRING_SIZE];
@@ -262,7 +21,6 @@ void readOBANetwork(network_type *network, char *linkFileName,
     network->numZones = IS_MISSING;
     network->numArcs = IS_MISSING;
     network->numNodes = IS_MISSING;
-    network->numClasses = numClasses;
     network->firstThroughNode = IS_MISSING;
     defaultTollFactor = IS_MISSING;
     defaultDistanceFactor = IS_MISSING;
@@ -332,21 +90,9 @@ void readOBANetwork(network_type *network, char *linkFileName,
     displayMessage(MEDIUM_NOTIFICATIONS, "Distance factor, toll factor: "
             "%lf %lf\n", defaultDistanceFactor, defaultTollFactor);
 
-    network->numOrigins = network->numZones * network->numClasses;
     network->nodes = newVector(network->numNodes, node_type);
     network->arcs = newVector(network->numArcs, arc_type);
-    network->demand = newMatrix(network->numOrigins, network->numZones,double);
-    network->tollFactor = newVector(network->numClasses, double);
-    network->distanceFactor = newVector(network->numClasses, double);
-#ifdef PARALLELISM
-    network->arc_muts = newVector(network->numArcs, pthread_mutex_t);
-#endif
-
-    /* Default batching for network reading; can adjust later */
-    network->batchSize = network->numOrigins;
-    network->numBatches = 1;
-    network->curBatch = 0;
-    
+    network->demand = newMatrix(network->numZones, network->numZones,double);
     for (i = 0; i < network->numOrigins; i++) {
         for (j = 0; j < network->numZones; j++) {
             network->demand[i][j] = 0;
@@ -410,215 +156,78 @@ void readOBANetwork(network_type *network, char *linkFileName,
         network->arcs[i].cost = network->arcs[i].freeFlowTime;
         if (network->arcs[i].beta == 1) {
            network->arcs[i].calculateCost = &linearBPRcost;
-           network->arcs[i].calculateDer = &linearBPRder;           
-           network->arcs[i].calculateInt = &linearBPRint;           
         } else if (network->arcs[i].beta == 4) {
            network->arcs[i].calculateCost = &quarticBPRcost;
-           network->arcs[i].calculateDer = &quarticBPRder;           
-           network->arcs[i].calculateInt = &quarticBPRint;           
         } else {
            network->arcs[i].calculateCost = &generalBPRcost;
-           network->arcs[i].calculateDer = &generalBPRder;           
-           network->arcs[i].calculateInt = &generalBPRint;           
         }           
-        network->arcs[i].classFlow = newVector(network->numClasses, double);
-        network->arcs[i].classCost = newVector(network->numClasses, double);
-        network->arcs[i].classToll = newVector(network->numClasses, double);        
-        for (c = 0; c < network->numClasses; c++) {
-            /* Assume all costs face same toll unless otherwise stated.
-               (e.g., to make a toll-insensitive class you can make its toll
-               zero) */
-            network->arcs[i].classToll[c] = network->arcs[i].toll;
-        }
-        /* classFlow and classCost are initialized in finalizeNetwork */
     }
-
-    for (c = 0; c < network->numClasses; c++) {
-        tripFile = openFile(tripFileName[c], "r");
-        /* Verify trip table metadata */
-        endofMetadata = FALSE;
-        network->totalODFlow = IS_MISSING;
-        network->tollFactor[c] = defaultTollFactor;
-        network->distanceFactor[c] = defaultDistanceFactor;
-        do {
-            if (fgets(fullLine, STRING_SIZE, tripFile) == NULL) 
-                fatalError("Trip file %s ended (or other I/O error) before "
-                        "metadata complete.", tripFileName);
-            status = parseMetadata(fullLine, metadataTag, metadataValue);
-            if (status == BLANK_LINE || status == COMMENT) continue;
-            if         (strcmp(metadataTag, "NUMBER OF ZONES") == 0) {
-                check = atoi(metadataValue);
-                if (check != network->numZones) fatalError("Number of zones in"
-                        "trip and link files do not match.");
-            } else if (strcmp(metadataTag, "TOTAL OD FLOW") == 0) {
-                network->totalODFlow = atof(metadataValue);
-            } else if (strcmp(metadataTag, "DEMAND MULTIPLIER") == 0) {
-                demandMultiplier = atof(metadataValue);
-            } else if (strcmp(metadataTag, "DISTANCE FACTOR") == 0) {
-                network->distanceFactor[c] = atof(metadataValue);
-            } else if (strcmp(metadataTag, "TOLL FACTOR") == 0) {
-                network->tollFactor[c] = atof(metadataValue);
-            } else if (strcmp(metadataTag, "END OF METADATA") == 0) {
-                endofMetadata = TRUE;
-            } else {
-                warning(MEDIUM_NOTIFICATIONS, "Ignoring unknown metadata tag "
-                        "%s in trips file %s", metadataTag, tripFileName[c]);
-            }
-        } while (endofMetadata == FALSE);
-        if (demandMultiplier == IS_MISSING)
-            demandMultiplier = defaultDemandMultiplier;
-
-        /* Now read trip table */
-        while (!feof(tripFile)) {
-            if (fgets(fullLine, STRING_SIZE, tripFile) == NULL) break;
-            status = parseLine(fullLine, trimmedLine);
-            if (status == BLANK_LINE || status == COMMENT) continue;
-            if (strstr(trimmedLine, "Origin") != NULL) {
-                // i indexes current origin
-                sscanf(strstr(trimmedLine, "Origin")+6,"%d", &i);  
-                if (i <= 0 || i > network->numZones) fatalError("Origin %d is"
-                        "out of range in trips file %s", i, tripFileName[c]);
-                i--;
-                r = nodeclass2origin(network, i, c);
-                continue;
-            }
-            token = strtok(trimmedLine , ";");
-            while (token != NULL && strlen(token) > 1) {
-                numParams = sscanf(token, "%d : %lf", &j, &demand);
-                if (numParams < 2) break;
-                if (j <= 0 || j > network->numZones) fatalError("Destination "
-                        "%d is out of range in trips file %s\n%s\n%s", j, 
-                        tripFileName[c], fullLine, token);
-                j--;
-                network->demand[r][j] = demand * demandMultiplier;
-                if (demand < 0) fatalError("Negative demand from origin %d to "
-                        "destination %d in class %d", i, j, c);
-                totalDemandCheck += network->demand[r][j];
-                token = strtok(NULL, ";");
-            }
-            blankInputString(trimmedLine, STRING_SIZE);
-        }
-
-        fclose(tripFile);
-    }
-
-    displayMessage(MEDIUM_NOTIFICATIONS, "%d nodes, %d arcs, and %d zones\n",
-            network->numNodes, network->numArcs, network->numZones);
-
     fclose(linkFile);
-    displayMessage(LOW_NOTIFICATIONS, "File read and memory allocated.\n");
 
+    tripFile = openFile(tripFileName[c], "r");
+    /* Verify trip table metadata */
+    endofMetadata = FALSE;
+    network->totalODFlow = IS_MISSING;
+    network->tollFactor = defaultTollFactor;
+    network->distanceFactor = defaultDistanceFactor;
+    do {
+        if (fgets(fullLine, STRING_SIZE, tripFile) == NULL) 
+            fatalError("Trip file %s ended (or other I/O error) before "
+                    "metadata complete.", tripFileName);
+        status = parseMetadata(fullLine, metadataTag, metadataValue);
+        if (status == BLANK_LINE || status == COMMENT) continue;
+        if         (strcmp(metadataTag, "NUMBER OF ZONES") == 0) {
+            check = atoi(metadataValue);
+            if (check != network->numZones) fatalError("Number of zones in"
+                    "trip and link files do not match.");
+        } else if (strcmp(metadataTag, "TOTAL OD FLOW") == 0) {
+            network->totalODFlow = atof(metadataValue);
+        } else if (strcmp(metadataTag, "DISTANCE FACTOR") == 0) {
+            network->distanceFactor[c] = atof(metadataValue);
+        } else if (strcmp(metadataTag, "TOLL FACTOR") == 0) {
+            network->tollFactor[c] = atof(metadataValue);
+        } else if (strcmp(metadataTag, "END OF METADATA") == 0) {
+            endofMetadata = TRUE;
+        } else {
+            warning(MEDIUM_NOTIFICATIONS, "Ignoring unknown metadata tag "
+                    "%s in trips file %s", metadataTag, tripFileName[c]);
+        }
+    } while (endofMetadata == FALSE);
+
+    /* Now read trip table */
+    while (!feof(tripFile)) {
+        if (fgets(fullLine, STRING_SIZE, tripFile) == NULL) break;
+        status = parseLine(fullLine, trimmedLine);
+        if (status == BLANK_LINE || status == COMMENT) continue;
+        if (strstr(trimmedLine, "Origin") != NULL) {
+            // i indexes current origin
+            sscanf(strstr(trimmedLine, "Origin")+6,"%d", &i);  
+            if (i <= 0 || i > network->numZones) fatalError("Origin %d is"
+                    "out of range in trips file %s", i, tripFileName[c]);
+            i--;
+            continue;
+        }
+        token = strtok(trimmedLine , ";");
+        while (token != NULL && strlen(token) > 1) {
+            numParams = sscanf(token, "%d : %lf", &j, &demand);
+            if (numParams < 2) break;
+            if (j <= 0 || j > network->numZones) fatalError("Destination "
+                    "%d is out of range in trips file %s\n%s\n%s", j, 
+                    tripFileName[c], fullLine, token);
+            j--;
+            network->demand[r][j] = demand * demandMultiplier;
+            if (demand < 0) fatalError("Negative demand from origin %d to "
+                    "destination %d in class %d", i, j, c);
+            totalDemandCheck += network->demand[i][j];
+            token = strtok(NULL, ";");
+        }
+        blankInputString(trimmedLine, STRING_SIZE);
+    }
+
+    fclose(tripFile);
     finalizeNetwork(network);
     displayMessage(FULL_NOTIFICATIONS, "Forward and reverse star lists "
             "generated.\n");
-
-}
-
-/*
-setBatches: Re-partitions the network into origin batches of the given
-size.  This should NEVER be called during the middle of a run, or
-unpredictable things may happen.
-
-As a result, we write the binary matrices HERE.
-*/
-void setBatches(network_type *network, int batchSize, bool warmStart,
-                bool storeMatrices, char *matrixStem) {
-    network->batchSize = batchSize;
-    if (network->numOrigins % batchSize != 0) {
-        fatalError("Number of origins (%d) must be divisible by the batch "
-                   "size(%d)\n", network->numOrigins, batchSize);
-    }
-    network->numBatches = (network->numOrigins - 1) / batchSize + 1;
-    network->curBatch = 0;
-
-    if (warmStart == FALSE
-            && (network->numBatches > 1 || storeMatrices == TRUE ))
-        writeBinaryMatrices(network, matrixStem);
-
-    if (network-> numBatches > 1 && warmStart == FALSE) {
-        deleteMatrix(network->demand, network->numOrigins);
-        network->demand = newMatrix(network->batchSize, network->numZones,
-                                    double);
-    }
-
-}
-
-
-void writeOBANetwork(network_type *network, char *linkFileName, 
-        char *tripFileName) {
-    int i, j;
-    qsort(network->arcs, network->numArcs, sizeof(arc_type),
-            forwardStarOrder); 
-    displayMessage(FULL_NOTIFICATIONS, "Arcs sorted.");
-
-    FILE* linkFile = openFile(linkFileName, "w");
-
-    displayMessage(FULL_NOTIFICATIONS, "Opening %s and %s\n", linkFileName,
-            tripFileName);
-    fprintf(linkFile, "<NUMBER OF NODES> %d\n", network->numNodes);
-    fprintf(linkFile, "<NUMBER OF LINKS> %d\n", network->numArcs);
-    fprintf(linkFile, "<NUMBER OF ZONES> %d\n", network->numZones);
-    fprintf(linkFile, "<FIRST THRU NODE> %d\n", network->firstThroughNode);
-    fprintf(linkFile, "<END OF METADATA>\n");
-    fprintf(linkFile, "\n");
-    fprintf(linkFile, "~\tTail\tHead\tCapacity (veh/h)\tLength (ft)\tFree "
-            "Flow Time (min)\tB\tPower\tSpeed (ft/min)\tToll\tType\t;\n");
-    for (i = 0; i < network->numArcs; i++) {
-        fprintf(linkFile,
-                "\t%d\t%d\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%d\t;\n",
-            network->arcs[i].tail,
-            network->arcs[i].head,
-            network->arcs[i].capacity,
-            network->arcs[i].length,
-            network->arcs[i].freeFlowTime,
-            network->arcs[i].alpha,
-            network->arcs[i].beta,
-            network->arcs[i].speedLimit,
-            network->arcs[i].toll,
-            network->arcs[i].linkType);
-    }
-    fclose(linkFile);
-    displayMessage(FULL_NOTIFICATIONS, "Wrote arcs.\n");
-
-    int destinationsWritten;
-    FILE* tripFile = openFile(tripFileName, "w");
-
-    fprintf(tripFile, "<NUMBER OF ZONES> %d\n", network->numZones);
-    fprintf(tripFile, "<TOTAL OD FLOW> %lf\n", network->totalODFlow);
-    fprintf(tripFile, "<END OF METADATA>\n");
-    for (i = 0; i < network->numZones; i++) {
-        fprintf(tripFile, "\n\nOrigin %d\n", i);
-        destinationsWritten = 0;
-        for (j = 0; j < network->numZones; j++) {
-            if (network->demand[i][j] > 0) {
-                fprintf(tripFile, "\t%d :\t%lf;",j,network->demand[i][j]);
-                destinationsWritten++;
-                if (destinationsWritten % DESTINATIONS_PER_LINE == 0)
-                    fprintf(tripFile, "\n");
-            }
-        }
-    }
-    fclose(tripFile);
-    displayMessage(FULL_NOTIFICATIONS, "Wrote ODs.\n");
-}
-
-/*
- * writeNetworkFlows prints the link IDs, flows, and costs in the file
- * format used on the TNTP site.
- */
-void writeNetworkFlows(network_type *network, char *outputFileName) {
-    FILE *outFile = openFile(outputFileName, "w");
-    int ij;
-
-    for (ij = 0; ij < network->numArcs; ij++) {
-        fprintf(outFile, "(%d,%d) %f %f\n", network->arcs[ij].tail + 1,
-                                            network->arcs[ij].head + 1,
-                                            network->arcs[ij].flow,
-                                            network->arcs[ij].cost
-                                                - network->arcs[ij].fixedCost);
-    }
-    
-    fclose(outFile);
 }
 
 ///////////////////////
@@ -670,61 +279,5 @@ int parseLine(char* inputLine, char* outputLine) {
     }
     outputLine[j] = '\0';
     return SUCCESS;
-}
-
-void parseCSV(char field[][STRING_SIZE], char *fullLine, int numFields) {
-    int curField, pos;
-    char *comma, *position;
-
-    /* Strip trailing newline, if any */
-    int len = strlen(fullLine);
-    while (len > 0 && isspace(fullLine[len-1])) {
-        fullLine[--len] = '\0';
-    }
-
-    comma = strchr(fullLine, ',');
-    position = fullLine;
-    curField = 0;
-    while (comma) {
-        if (curField >= numFields) fatalError("Too many args to parseCSV!");
-        pos = 0;
-        while (position < comma && pos <= STRING_SIZE) {
-            field[curField][pos] = *position;
-            pos++;
-            position++;
-        }
-        field[curField][pos] = '\0';
-        position++;
-        curField++;
-        comma = strchr(position, ',');
-    }
-    /* Copy last field */
-    strncpy(field[curField], position, STRING_SIZE);
-}
-
-#ifdef PARALLELISM
-/* Code indepdent taken from Stack Overflow (https://stackoverflow.com/a/3006416) */
-int getNumCores() {
-#ifdef WIN32
-    SYSTEM_INFO sysinfo;
-    GetSystemInfo(&sysinfo);
-    return sysinfo.dwNumberOfProcessors;
-#elif MACOS
-    int nm[2];
-    size_t len = 4;
-    uint32_t count;
-
-    nm[0] = CTL_HW; nm[1] = HW_AVAILCPU;
-    sysctl(nm, 2, &count, &len, NULL, 0);
-
-    if(count < 1) {
-        nm[1] = HW_NCPU;
-        sysctl(nm, 2, &count, &len, NULL, 0);
-        if(count < 1) { count = 1; }
-    }
-    return count;
-#else
-    return sysconf(_SC_NPROCESSORS_ONLN);
-#endif
 }
 #endif

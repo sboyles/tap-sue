@@ -28,11 +28,6 @@ FILE *openFile(const char *filename, const char *access) {
     return handle;
 }
 
-void my_fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
-    unsigned int result = fread(ptr, size, nmemb, stream);
-    if (result != nmemb) fatalError("Error reading from file. Expecting %d bytes, read %d bytes\n", nmemb, result);
-}
-
 /*
 updateElapsedTime helps with timing, adding an increment to elapsedTime.  Note
 that this function does not reset startTime (in order to allow for calculations
