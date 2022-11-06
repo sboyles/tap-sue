@@ -14,7 +14,6 @@
 #include <unistd.h>
 #include "bush.h"
 #include "networks.h"
-#include "tap.h"
 #include "utils.h"
 
 #define STRING_SIZE 9999

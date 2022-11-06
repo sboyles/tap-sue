@@ -69,7 +69,7 @@ finalizeNetwork: After adding the links and nodes to the network struct, this
 function generates the forward and reverse star lists. 
 */
 void finalizeNetwork(network_type *network) {
-    int i, ij, c;
+    int i, ij;
 
     for (i = 0; i < network->numNodes; i++) {
         initializeArcList(&(network->nodes[i].forwardStar));
@@ -238,14 +238,13 @@ void displayNetwork(int minVerbosity, network_type *network) {
     int i;
     displayMessage(minVerbosity, "Network has %d nodes and %d arcs\n", 
             network->numNodes, network->numArcs);
-    displayMessage(minVerbosity, "Arc data: ID, tail, head, flow, cost, der "
+    displayMessage(minVerbosity, "Arc data: ID, tail, head, flow, cost "
                                  "(skipping artificial arcs)\n");
     for (i = 0; i < network->numArcs; i++) {
        if (network->arcs[i].capacity == ARTIFICIAL) continue; 
-       displayMessage(minVerbosity, "%ld (%ld,%ld) %f %f %f\n", i, 
+       displayMessage(minVerbosity, "%ld (%ld,%ld) %f %f\n", i, 
                network->arcs[i].tail + 1, network->arcs[i].head + 1, 
-               network->arcs[i].flow, network->arcs[i].cost, 
-               network->arcs[i].der);
+               network->arcs[i].flow, network->arcs[i].cost);
     }
 }
 
@@ -258,17 +257,9 @@ void deleteNetwork(network_type *network) {
       clearArcList(&(network->nodes[i].forwardStar));
       clearArcList(&(network->nodes[i].reverseStar));
    }
-   for (i = 0; i < network->numArcs; i++) {
-       deleteVector(network->arcs[i].classFlow);
-       deleteVector(network->arcs[i].classCost);
-       deleteVector(network->arcs[i].classToll);
-   }
-
-   deleteMatrix(network->demand, network->batchSize);
+   deleteMatrix(network->demand, network->numZones);
    deleteVector(network->nodes);
    deleteVector(network->arcs);
-   deleteVector(network->tollFactor);
-   deleteVector(network->distanceFactor);
    deleteScalar(network);
 }
 

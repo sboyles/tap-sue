@@ -9,26 +9,26 @@
 
 /* Initialize bushes based on free-flow travel times. */
 bushes_type *initializeBushes(network_type *network) {
-    int r, s, curnode, i, j, ij;
+    int r, curnode, i, j, ij;
     arcListElt *curArc;
-    bushes_type *bushes = createScalar(bushes_type);
+    bushes_type *bushes = newScalar(bushes_type);
 
-    bushes->SPcost = newVector(double, network->numNodes);
-    bushes->flow = newVector(double, network->numLinks);
-    bushes->nodeFlow = newVector(double, network->numNodes);
-    bushes->weight = newVector(double, network->numLinks);
-    bushes->nodeWeight = newVector(double, network->numNodes);
-    bushes->likelihood = newVector(double, network->numLinks);
+    bushes->SPcost = newVector(network->numNodes, double);
+    bushes->flow = newVector(network->numArcs, double);
+    bushes->nodeFlow = newVector(network->numNodes, double);
+    bushes->weight = newVector(network->numArcs, double);
+    bushes->nodeWeight = newVector(network->numNodes, double);
+    bushes->likelihood = newVector(network->numArcs, double);
     
     bushes->bushForwardStar
-            = newMatrix(arcList, network->numZones, network->numNodes);
+            = newMatrix(network->numZones, network->numNodes, arcList);
     bushes->bushReverseStar
-            = newMatrix(arcList, network->numZones, network->numNodes);
+            = newMatrix(network->numZones, network->numNodes, arcList);
 
-    bushes->numBushLinks = newVector(long, network->numZones);
-    bushes->numBushPaths = newVector(long, network->numZones);
+    bushes->numBushLinks = newVector(network->numZones, long);
+    bushes->numBushPaths = newVector(network->numZones, long);
 
-    pathCount = newVector(long, network->numNodes);
+    declareVector(long, pathCount, network->numNodes);
 
     /* Identify reasonable links based on distance from origin using
      * free-flow costs.  Ensure these are strictly positive to prevent
@@ -52,10 +52,10 @@ bushes_type *initializeBushes(network_type *network) {
             j = network->arcs[ij].head;
             if (bushes->SPcost[i] < bushes->SPcost[j]) {
                 bushes->numBushLinks[r]++;
-                insertArcList(&(bushes->bushForwardStar[r][i],
+                insertArcList(&(bushes->bushForwardStar[r][i]),
                               &(network->arcs[ij]),
                               bushes->bushForwardStar[r][i].tail);
-                insertArcList(&(bushes->bushReverseStar[r][j],
+                insertArcList(&(bushes->bushReverseStar[r][j]),
                               &(network->arcs[ij]),
                               bushes->bushForwardStar[r][j].tail);
             }
@@ -105,8 +105,8 @@ void deleteBushes(bushes_type* bushes) {
             clearArcList(&(bushes->bushReverseStar[r][i]));
         }
     }
-    deleteMatrix(bushes->bushForwardStar, network->numOrigins);
-    deleteMatrix(bushes->bushReverseStar, network->numOrigins);
+    deleteMatrix(bushes->bushForwardStar, network->numZones);
+    deleteMatrix(bushes->bushReverseStar, network->numZones);
     deleteVector(bushes->numBushLinks);
     deleteVector(bushes->numBushPaths);
     deleteScalar(bushes);
@@ -121,7 +121,7 @@ void deleteBushes(bushes_type* bushes) {
 void bushTopologicalOrder(int origin, network_type *network,
                           bushes_type *bushes) {
     arcListElt *curArc;
-    int i, j, m, next;
+    int i, j, next;
     declareVector(int, indegree, network->numNodes);
     for (i = 0; i < network->numNodes; i++) {
         indegree[i] = bushes->bushReverseStar[origin][i].size;

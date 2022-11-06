@@ -65,7 +65,7 @@ typedef struct bushes_type {
 } bushes_type;
 
 bushes_type *initializeBushes(network_type *network);
-void deleteBushes(bushes_type);
+void deleteBushes(bushes_type *bushes);
 
 void bushTopologicalOrder(int origin, network_type *network,
                           bushes_type *bushes);

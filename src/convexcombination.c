@@ -12,13 +12,15 @@
 /* Main function for method of successive averages with fixed
  * step size lambda
  */
-void SUE_MSA(network_type *network, float theta, float lambda) {
+void SUE_MSA(network_type *network, double theta, double lambda) {
     bool converged = FALSE;
     int iteration = 0;
-    double elapsedTime = 0;
-    bushes_type *bushes;
+    double elapsedTime = 0, diff = INFINITY;
+    long numBushLinks, numPaths;
+    bushes_type *bushes = NULL;
     declareVector(double, target, network->numArcs);
     clock_t stopTime = clock(); /* used for timing */
+
     initializeSolution(network, bushes, theta, &numBushLinks, &numPaths);
     elapsedTime += ((double)(clock() - stopTime)) / CLOCKS_PER_SEC;
     displayMessage(MEDIUM_NOTIFICATIONS, "%ld bush links, %ld paths\n",
@@ -28,7 +30,7 @@ void SUE_MSA(network_type *network, float theta, float lambda) {
     stopTime = clock();
     while (converged == FALSE) {
         updateLinkCosts(network);
-        calculateTarget(network, target, theta);
+        calculateTarget(network, bushes, target, theta);
         diff = avgFlowDiff(network, target);
         elapsedTime += ((double)(clock() - stopTime)) / CLOCKS_PER_SEC;
         displayMessage(LOW_NOTIFICATIONS, "Iteration %d: "
@@ -40,7 +42,7 @@ void SUE_MSA(network_type *network, float theta, float lambda) {
         stopTime = clock();
         if (elapsedTime > MAX_TIME) converged = TRUE;
         if (iteration >= MAX_ITERATIONS) converged = TRUE;
-        if (gap < LINK_FLOW_TOLERANCE) converged = TRUE;
+        if (diff < LINK_FLOW_TOLERANCE) converged = TRUE;
         if (converged == TRUE) break;
 
         shiftFlows(network, target, lambda);
@@ -71,7 +73,7 @@ void calculateTarget(network_type *network, bushes_type *bushes,
     for (ij = 0; ij < network->numArcs; ij++) {
         target[ij] = 0;
     }
-    for (r = 0; r < network->numOrigins; r++) {
+    for (r = 0; r < network->numZones; r++) {
         dialFlows(network, bushes, r, theta);
         for (ij = 0; ij < network->numArcs; ij++) {
             target[ij] += bushes->flow[ij];
@@ -113,7 +115,7 @@ void initializeSolution(network_type *network, bushes_type *bushes,
     }
 
     /* Compute initial solution */
-    calculateTarget(network, target, theta);
+    calculateTarget(network, bushes, target, theta);
     for (ij = 0; ij < network->numArcs; ij++) {
         network->arcs[ij].flow = target[ij];
     }

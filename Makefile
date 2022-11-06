@@ -22,7 +22,6 @@ CC = gcc
 CFLAGS = -std=c99 -pthread -Wall $(INCLUDEFLAG) $(DEPFLAGS)
 CFLAGS += -Wextra -Wwrite-strings -Wno-parentheses -Winline
 CFLAGS += -Wpedantic -Warray-bounds
-CFLAGS += -DPARALLELISM=1 # Parallel is now default; use make serial if unwanted
 DEBUGFLAGS = -g -O0
 RELEASEFLAGS = -O3
 PROFILEFLAGS = -pg $(DEBUGFLAGS)
@@ -39,16 +38,6 @@ all: $(BINDIR)/$(PROJECT)
 
 $(BINDIR)/$(PROJECT): $(OBJECTS)
 	$(LINKER) $^ $(LFLAGS) -o $@
-
-# ------- serial target: build the main project ------
-.PHONY: serial
-serial: CFLAGS += -UPARALLELISM 
-serial: $(BINDIR)/$(PROJECT)
-
-# ------- serial debug: build the main project ------
-.PHONY: serial-d
-serial-d: CFLAGS += -UPARALLELISM -g
-serial-d: $(BINDIR)/$(PROJECT)
 
 # ---------- release target: extra optimization ----
 

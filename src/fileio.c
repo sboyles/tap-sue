@@ -93,7 +93,7 @@ void readTntpNetwork(network_type *network, char *linkFileName,
     network->nodes = newVector(network->numNodes, node_type);
     network->arcs = newVector(network->numArcs, arc_type);
     network->demand = newMatrix(network->numZones, network->numZones,double);
-    for (i = 0; i < network->numOrigins; i++) {
+    for (i = 0; i < network->numZones; i++) {
         for (j = 0; j < network->numZones; j++) {
             network->demand[i][j] = 0;
         }
@@ -164,7 +164,7 @@ void readTntpNetwork(network_type *network, char *linkFileName,
     }
     fclose(linkFile);
 
-    tripFile = openFile(tripFileName[c], "r");
+    tripFile = openFile(tripFileName, "r");
     /* Verify trip table metadata */
     endofMetadata = FALSE;
     network->totalODFlow = IS_MISSING;
@@ -183,9 +183,9 @@ void readTntpNetwork(network_type *network, char *linkFileName,
         } else if (strcmp(metadataTag, "TOTAL OD FLOW") == 0) {
             network->totalODFlow = atof(metadataValue);
         } else if (strcmp(metadataTag, "DISTANCE FACTOR") == 0) {
-            network->distanceFactor[c] = atof(metadataValue);
+            network->distanceFactor = atof(metadataValue);
         } else if (strcmp(metadataTag, "TOLL FACTOR") == 0) {
-            network->tollFactor[c] = atof(metadataValue);
+            network->tollFactor = atof(metadataValue);
         } else if (strcmp(metadataTag, "END OF METADATA") == 0) {
             endofMetadata = TRUE;
         } else {
@@ -215,7 +215,7 @@ void readTntpNetwork(network_type *network, char *linkFileName,
                     "%d is out of range in trips file %s\n%s\n%s", j, 
                     tripFileName[c], fullLine, token);
             j--;
-            network->demand[r][j] = demand * demandMultiplier;
+            network->demand[r][j] = demand;
             if (demand < 0) fatalError("Negative demand from origin %d to "
                     "destination %d in class %d", i, j, c);
             totalDemandCheck += network->demand[i][j];
@@ -280,4 +280,3 @@ int parseLine(char* inputLine, char* outputLine) {
     outputLine[j] = '\0';
     return SUCCESS;
 }
-#endif
