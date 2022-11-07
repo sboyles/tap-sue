@@ -35,7 +35,7 @@ void SUE_MSA(network_type *network, double theta, double lambda) {
         elapsedTime += ((double)(clock() - stopTime)) / CLOCKS_PER_SEC;
         displayMessage(LOW_NOTIFICATIONS, "Iteration %d: "
                                           "flow diff %.3f, "
-                                          "time %.3f",
+                                          "time %.3f\n",
                                           iteration,
                                           diff,
                                           elapsedTime);
@@ -118,7 +118,7 @@ void initializeSolution(network_type *network, bushes_type **bushes,
     calculateTarget(network, *bushes, target, theta);
     for (ij = 0; ij < network->numArcs; ij++) {
         network->arcs[ij].flow = target[ij];
-        printf("%d %d has %f\n", network->arcs[ij].tail+1, network->arcs[ij].head+1, network->arcs[ij].flow);
+        //printf("%d %d has %f\n", network->arcs[ij].tail+1, network->arcs[ij].head+1, network->arcs[ij].flow);
     }
     deleteVector(target);
 }

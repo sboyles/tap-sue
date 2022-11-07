@@ -259,7 +259,9 @@ void dialFlows(network_type *network, bushes_type *bushes, int origin,
     }
     for (curnode = network->numNodes - 2; curnode >= 0; curnode--) {
         i = bushes->bushOrder[origin][curnode];
-        bushes->nodeFlow[i] = 0;
+        bushes->nodeFlow[i] = (i < network->numZones ?
+                               network->demand[origin][i] :
+                               0);
         for (curArc = bushes->bushForwardStar[origin][i].head;
              curArc != NULL;
              curArc = curArc->next)
