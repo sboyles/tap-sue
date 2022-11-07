@@ -52,14 +52,14 @@ bushes_type *initializeBushes(network_type *network) {
             i = network->arcs[ij].tail;
             j = network->arcs[ij].head;
             if (bushes->SPcost[i] < bushes->SPcost[j]) {
-                //printf("%d: %d to %d is reasonable based on %f %f\n", r+1, i+1, j+1, bushes->SPcost[i], bushes->SPcost[j]);
+                //printf("%d: %d to %d is reasonable based on %f %f\n", r+1, i+1, j+1, bushes->SPcost[i], bushes->SPcost[j]); fflush(stdout);
                 bushes->numBushLinks[r]++;
                 insertArcList(&(bushes->bushForwardStar[r][i]),
                               &(network->arcs[ij]),
                               bushes->bushForwardStar[r][i].tail);
                 insertArcList(&(bushes->bushReverseStar[r][j]),
                               &(network->arcs[ij]),
-                              bushes->bushForwardStar[r][j].tail);
+                              bushes->bushReverseStar[r][j].tail);
             }
         }
         bushTopologicalOrder(r, network, bushes);

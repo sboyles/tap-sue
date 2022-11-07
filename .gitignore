@@ -14,7 +14,7 @@ matrix*
 *.log
 CMakeLists.txt
 todo-nosync.txt
-*.swp
+*.sw?
 *.bin
 valgrind.txt
 scratch/

@@ -46,6 +46,7 @@ void SUE_MSA(network_type *network, double theta, double lambda) {
         if (converged == TRUE) break;
 
         shiftFlows(network, target, lambda);
+        iteration++;
     }
     deleteVector(target);
     deleteBushes(bushes);
