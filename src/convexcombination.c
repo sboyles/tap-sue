@@ -21,7 +21,7 @@ void SUE_MSA(network_type *network, double theta, double lambda) {
     declareVector(double, target, network->numArcs);
     clock_t stopTime = clock(); /* used for timing */
 
-    initializeSolution(network, bushes, theta, &numBushLinks, &numPaths);
+    initializeSolution(network, &bushes, theta, &numBushLinks, &numPaths);
     elapsedTime += ((double)(clock() - stopTime)) / CLOCKS_PER_SEC;
     displayMessage(MEDIUM_NOTIFICATIONS, "%ld bush links, %ld paths\n",
                    numBushLinks, numPaths);
@@ -101,23 +101,24 @@ double avgFlowDiff(network_type *network, double *target) {
  * is saved by using Dial's method rather than directly using the logit
  * formula.
  */
-void initializeSolution(network_type *network, bushes_type *bushes,
+void initializeSolution(network_type *network, bushes_type **bushes,
                           double theta, long *numBushLinks, long *numPaths) {
 
     int r, ij;
     declareVector(double, target, network->numArcs);
-    bushes = initializeBushes(network);
+    *bushes = initializeBushes(network);
     *numBushLinks = 0;
     *numPaths = 0;
     for (r = 0; r < network->numZones; r++) {
-        *numBushLinks += bushes->numBushLinks[r];
-        *numPaths += bushes->numBushPaths[r];
+        *numBushLinks += (*bushes)->numBushLinks[r];
+        *numPaths += (*bushes)->numBushPaths[r];
     }
 
     /* Compute initial solution */
-    calculateTarget(network, bushes, target, theta);
+    calculateTarget(network, *bushes, target, theta);
     for (ij = 0; ij < network->numArcs; ij++) {
         network->arcs[ij].flow = target[ij];
+        printf("%d %d has %f\n", network->arcs[ij].tail+1, network->arcs[ij].head+1, network->arcs[ij].flow);
     }
     deleteVector(target);
 }

@@ -19,7 +19,8 @@ bushes_type *initializeBushes(network_type *network) {
     bushes->weight = newVector(network->numArcs, double);
     bushes->nodeWeight = newVector(network->numNodes, double);
     bushes->likelihood = newVector(network->numArcs, double);
-    
+
+    bushes->bushOrder = newMatrix(network->numZones, network->numArcs, int);
     bushes->bushForwardStar
             = newMatrix(network->numZones, network->numNodes, arcList);
     bushes->bushReverseStar
@@ -51,6 +52,7 @@ bushes_type *initializeBushes(network_type *network) {
             i = network->arcs[ij].tail;
             j = network->arcs[ij].head;
             if (bushes->SPcost[i] < bushes->SPcost[j]) {
+                //printf("%d: %d to %d is reasonable based on %f %f\n", r+1, i+1, j+1, bushes->SPcost[i], bushes->SPcost[j]);
                 bushes->numBushLinks[r]++;
                 insertArcList(&(bushes->bushForwardStar[r][i]),
                               &(network->arcs[ij]),
@@ -68,18 +70,17 @@ bushes_type *initializeBushes(network_type *network) {
         for (curnode = 1; curnode < network->numNodes; curnode++) {
             j = bushes->bushOrder[r][curnode];
             pathCount[j] = 0;
-            for (curArc = bushes->bushReverseStar[r][i].head;
+            for (curArc = bushes->bushReverseStar[r][j].head;
                  curArc != NULL;
                  curArc = curArc->next)
             {
                 i = curArc->arc->tail;
                 pathCount[j] += pathCount[i];
             }
-            if (j < network->numZones) {
+            if (j < network->numZones && network->demand[r][j] > 0) {
                 bushes->numBushPaths[r] += pathCount[j];
             }
         }
-
     }
 
     bushes->network = network;
@@ -98,7 +99,8 @@ void deleteBushes(bushes_type* bushes) {
     deleteVector(bushes->weight);
     deleteVector(bushes->nodeWeight);
     deleteVector(bushes->likelihood);
-
+    
+    deleteMatrix(bushes->bushOrder, network->numZones);
     for (r = 0; r < network->numZones; r++) {
         for (i = 0; i < network->numNodes; i++) {
             clearArcList(&(bushes->bushForwardStar[r][i]));
@@ -117,6 +119,8 @@ void deleteBushes(bushes_type* bushes) {
  * algorithm (finding and marking nodes with no marked predecessors).
  * Arguments are the origin corresponding to the bush, and the network/bush
  * data structures.
+ *
+ * Ensures that the origin is always the 0-th node.
  */
 void bushTopologicalOrder(int origin, network_type *network,
                           bushes_type *bushes) {
@@ -129,9 +133,10 @@ void bushTopologicalOrder(int origin, network_type *network,
     }
 
     queue_type LIST = createQueue(network->numNodes, network->numNodes);
+    enQueue(&LIST, origin);
     next = 0;
     for (i = 0; i < network->numNodes; i++)
-        if (indegree[i] == 0)
+        if (indegree[i] == 0 && i != origin)
             enQueue(&LIST, i);
     while (LIST.curelts > 0) {
         i = deQueue(&LIST);
@@ -163,7 +168,6 @@ void bushShortestPath(network_type *network, bushes_type *bushes, int origin) {
     int curnode, i; /* curnode is topological order, i is real index */
     int h; /* upstream node */
     arcListElt *curArc;
-
     bushes->SPcost[origin] = 0;
     for (curnode = 1; curnode < network->numNodes; curnode++) {
         i = bushes->bushOrder[origin][curnode];
@@ -173,9 +177,11 @@ void bushShortestPath(network_type *network, bushes_type *bushes, int origin) {
              curArc = curArc->next)
         {
             h = curArc->arc->tail;
+            //printf("Considering cost %f+%f from node %d\n", bushes->SPcost[h], curArc->arc->cost, h+1);
             bushes->SPcost[i] = min(bushes->SPcost[i],
                                     bushes->SPcost[h] + curArc->arc->cost);
         }
+        //printf("L value from %d to %d is %f\n", origin+1, i+1, bushes->SPcost[i]);
     }
 }
 
@@ -183,22 +189,26 @@ void bushShortestPath(network_type *network, bushes_type *bushes, int origin) {
  * dialFlows -- Use Dial's method to first compute link likelihoods;
  * and then link/node weights; and then link/node flows.
  * These are returned in the flow array of the bushes struct.
- *
- * You need to call bushShortestPath first, or else the likelihoods
- * may not be valid.
  */
 void dialFlows(network_type *network, bushes_type *bushes, int origin,
                double theta) {
     int curnode, i, j, ij;
     arcListElt *curArc;
+    //printf("Starting origin %d\n", origin+1);
 
-    /* 1. Compute link likelihoods */
+    /* 1. Compute link likelihoods and reset flows (need to do this
+     *    manually to ensure unreasonable links still have zero flow) */
+    bushShortestPath(network, bushes, origin);
     for (ij = 0; ij < network->numArcs; ij++) {
         i = network->arcs[ij].tail;
         j = network->arcs[ij].head;
-        bushes->likelihood[ij] = exp(theta * (bushes->SPcost[j]
+        bushes->flow[ij] = 0;
+        bushes->likelihood[ij] = bushes->SPcost[i] == INFINITY ? 
+                                 0 : 
+                                 exp(theta * (bushes->SPcost[j]
                                               - bushes->SPcost[i]
                                               - network->arcs[ij].cost));
+        //printf("Computing likelihood from %d to %d based on %f - %f - %f: %f\n", i+1, j+1, bushes->SPcost[j], bushes->SPcost[i], network->arcs[ij].cost, bushes->likelihood[ij]);
     }
 
     /* 2. Compute node/link weights, starting with origin... */
@@ -211,7 +221,8 @@ void dialFlows(network_type *network, bushes_type *bushes, int origin,
         bushes->weight[ij] = bushes->likelihood[ij];
     }
     /* ... and now for the other nodes in topological order. */
-    for (i = 0; i < network->numNodes; i++) {
+    for (curnode = 1; curnode < network->numNodes; curnode++) {
+        i = bushes->bushOrder[origin][curnode];
         bushes->nodeWeight[i] = 0;
         for (curArc = bushes->bushReverseStar[origin][i].head;
              curArc != NULL;
@@ -227,6 +238,7 @@ void dialFlows(network_type *network, bushes_type *bushes, int origin,
             ij = ptr2arc(network, curArc->arc);
             bushes->weight[ij] = bushes->nodeWeight[i]*bushes->likelihood[ij];
         }
+        //printf("Node %d weight is %f\n", i+1, bushes->nodeWeight[i]);
     }
 
     /* 3. Now compute node/link flows, in reverse topological order */
@@ -239,10 +251,14 @@ void dialFlows(network_type *network, bushes_type *bushes, int origin,
          curArc = curArc->next)
     {
         ij = ptr2arc(network, curArc->arc);
-        bushes->flow[ij] = bushes->nodeFlow[i]
+        bushes->flow[ij] = bushes->nodeWeight[i] == 0 ?
+                           0 :
+                           bushes->nodeFlow[i]
                            * (bushes->weight[ij] / bushes->nodeWeight[i]);
+        //printf("Arc (%d,%d) flow is %f\n", network->arcs[ij].tail+1, network->arcs[ij].head+1, bushes->flow[ij]);
     }
     for (curnode = network->numNodes - 2; curnode >= 0; curnode--) {
+        i = bushes->bushOrder[origin][curnode];
         bushes->nodeFlow[i] = 0;
         for (curArc = bushes->bushForwardStar[origin][i].head;
              curArc != NULL;
@@ -256,8 +272,14 @@ void dialFlows(network_type *network, bushes_type *bushes, int origin,
              curArc = curArc->next)
         {
             ij = ptr2arc(network, curArc->arc);
-            bushes->flow[ij] = bushes->nodeFlow[i]
+            bushes->flow[ij] = bushes->nodeWeight[i] == 0 ?
+                               0 :
+                               bushes->nodeFlow[i]
                                * (bushes->weight[ij] / bushes->nodeWeight[i]);
+            //printf("Arc (%d,%d) flow is %f\n", network->arcs[ij].tail+1, network->arcs[ij].head+1, bushes->flow[ij]);
         }
     }
+
+    //if (origin == 1) exit(-1);
+
 }

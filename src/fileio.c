@@ -6,7 +6,7 @@
 
 void readTntpNetwork(network_type *network, char *linkFileName, 
                      char *tripFileName) {
-    int i, j, r = 0, c;
+    int i, j, r = 0;
     int check;
     int numParams, status;
     double demand, totalDemandCheck = 0;
@@ -190,7 +190,7 @@ void readTntpNetwork(network_type *network, char *linkFileName,
             endofMetadata = TRUE;
         } else {
             warning(MEDIUM_NOTIFICATIONS, "Ignoring unknown metadata tag "
-                    "%s in trips file %s", metadataTag, tripFileName[c]);
+                    "%s in trips file %s", metadataTag, tripFileName);
         }
     } while (endofMetadata == FALSE);
 
@@ -203,7 +203,7 @@ void readTntpNetwork(network_type *network, char *linkFileName,
             // i indexes current origin
             sscanf(strstr(trimmedLine, "Origin")+6,"%d", &i);  
             if (i <= 0 || i > network->numZones) fatalError("Origin %d is"
-                    "out of range in trips file %s", i, tripFileName[c]);
+                    "out of range in trips file %s", i, tripFileName);
             i--;
             continue;
         }
@@ -213,11 +213,11 @@ void readTntpNetwork(network_type *network, char *linkFileName,
             if (numParams < 2) break;
             if (j <= 0 || j > network->numZones) fatalError("Destination "
                     "%d is out of range in trips file %s\n%s\n%s", j, 
-                    tripFileName[c], fullLine, token);
+                    tripFileName, fullLine, token);
             j--;
             network->demand[r][j] = demand;
             if (demand < 0) fatalError("Negative demand from origin %d to "
-                    "destination %d in class %d", i, j, c);
+                    "destination %d", i, j);
             totalDemandCheck += network->demand[i][j];
             token = strtok(NULL, ";");
         }

@@ -14,6 +14,6 @@ void shiftFlows(network_type *network, double *target, double stepSize);
 void calculateTarget(network_type *network, bushes_type *bushes,
                        double *target, double theta);
 double avgFlowDiff(network_type *network, double *target);
-void initializeSolution(network_type *network, bushes_type *bushes,
+void initializeSolution(network_type *network, bushes_type **bushes,
                           double theta, long *numBushLinks, long *numPaths);
 #endif
