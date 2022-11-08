@@ -6,7 +6,7 @@
 
 void readTntpNetwork(network_type *network, char *linkFileName, 
                      char *tripFileName) {
-    int i, j, r = 0;
+    int i, j;
     int check;
     int numParams, status;
     double demand, totalDemandCheck = 0;
@@ -215,7 +215,7 @@ void readTntpNetwork(network_type *network, char *linkFileName,
                     "%d is out of range in trips file %s\n%s\n%s", j, 
                     tripFileName, fullLine, token);
             j--;
-            network->demand[r][j] = demand;
+            network->demand[i][j] = demand;
             if (demand < 0) fatalError("Negative demand from origin %d to "
                     "destination %d", i, j);
             totalDemandCheck += network->demand[i][j];

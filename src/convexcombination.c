@@ -16,14 +16,15 @@ void SUE_MSA(network_type *network, double theta, double lambda) {
     bool converged = FALSE;
     int iteration = 0;
     double elapsedTime = 0, diff = INFINITY;
-    long numBushLinks, numPaths;
+    long numBushLinks;
+    unsigned long long int numPaths;
     bushes_type *bushes = NULL;
     declareVector(double, target, network->numArcs);
     clock_t stopTime = clock(); /* used for timing */
 
     initializeSolution(network, &bushes, theta, &numBushLinks, &numPaths);
     elapsedTime += ((double)(clock() - stopTime)) / CLOCKS_PER_SEC;
-    displayMessage(MEDIUM_NOTIFICATIONS, "%ld bush links, %ld paths\n",
+    displayMessage(MEDIUM_NOTIFICATIONS, "%ld bush links, %llu paths\n",
                    numBushLinks, numPaths);
     displayMessage(LOW_NOTIFICATIONS, "Initialization done in %.3f s.\n",
                    elapsedTime);
@@ -103,7 +104,8 @@ double avgFlowDiff(network_type *network, double *target) {
  * formula.
  */
 void initializeSolution(network_type *network, bushes_type **bushes,
-                          double theta, long *numBushLinks, long *numPaths) {
+                          double theta, long *numBushLinks,
+                          unsigned long long int *numPaths) {
 
     int r, ij;
     declareVector(double, target, network->numArcs);
@@ -119,7 +121,6 @@ void initializeSolution(network_type *network, bushes_type **bushes,
     calculateTarget(network, *bushes, target, theta);
     for (ij = 0; ij < network->numArcs; ij++) {
         network->arcs[ij].flow = target[ij];
-        //printf("%d %d has %f\n", network->arcs[ij].tail+1, network->arcs[ij].head+1, network->arcs[ij].flow);
     }
     deleteVector(target);
 }

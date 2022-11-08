@@ -61,7 +61,7 @@ typedef struct bushes_type {
     arcList **bushReverseStar; /* [origin][node] */
     network_type *network; /* Points back to the corresponding network */
     long *numBushLinks; /* [origin] */
-    long *numBushPaths; /* [origin] */
+    unsigned long long int *numBushPaths; /* [origin] */
 } bushes_type;
 
 bushes_type *initializeBushes(network_type *network);

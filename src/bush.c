@@ -27,7 +27,7 @@ bushes_type *initializeBushes(network_type *network) {
             = newMatrix(network->numZones, network->numNodes, arcList);
 
     bushes->numBushLinks = newVector(network->numZones, long);
-    bushes->numBushPaths = newVector(network->numZones, long);
+    bushes->numBushPaths = newVector(network->numZones, unsigned long long int);
 
     declareVector(long, pathCount, network->numNodes);
 
@@ -52,7 +52,6 @@ bushes_type *initializeBushes(network_type *network) {
             i = network->arcs[ij].tail;
             j = network->arcs[ij].head;
             if (bushes->SPcost[i] < bushes->SPcost[j]) {
-                //printf("%d: %d to %d is reasonable based on %f %f\n", r+1, i+1, j+1, bushes->SPcost[i], bushes->SPcost[j]); fflush(stdout);
                 bushes->numBushLinks[r]++;
                 insertArcList(&(bushes->bushForwardStar[r][i]),
                               &(network->arcs[ij]),
@@ -81,6 +80,7 @@ bushes_type *initializeBushes(network_type *network) {
                 bushes->numBushPaths[r] += pathCount[j];
             }
         }
+        displayMessage(DEBUG, "Paths for origin %d: %llu\n", r+1, bushes->numBushPaths[r]);
     }
 
     bushes->network = network;

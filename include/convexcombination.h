@@ -15,5 +15,6 @@ void calculateTarget(network_type *network, bushes_type *bushes,
                        double *target, double theta);
 double avgFlowDiff(network_type *network, double *target);
 void initializeSolution(network_type *network, bushes_type **bushes,
-                          double theta, long *numBushLinks, long *numPaths);
+                          double theta, long *numBushLinks,
+                          unsigned long long int *numPaths);
 #endif
