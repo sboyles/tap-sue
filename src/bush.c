@@ -177,11 +177,9 @@ void bushShortestPath(network_type *network, bushes_type *bushes, int origin) {
              curArc = curArc->next)
         {
             h = curArc->arc->tail;
-            //printf("Considering cost %f+%f from node %d\n", bushes->SPcost[h], curArc->arc->cost, h+1);
             bushes->SPcost[i] = min(bushes->SPcost[i],
                                     bushes->SPcost[h] + curArc->arc->cost);
         }
-        //printf("L value from %d to %d is %f\n", origin+1, i+1, bushes->SPcost[i]);
     }
 }
 
@@ -194,7 +192,6 @@ void dialFlows(network_type *network, bushes_type *bushes, int origin,
                double theta) {
     int curnode, i, j, ij;
     arcListElt *curArc;
-    //printf("Starting origin %d\n", origin+1);
 
     /* 1. Compute link likelihoods and reset flows (need to do this
      *    manually to ensure unreasonable links still have zero flow) */
@@ -208,7 +205,6 @@ void dialFlows(network_type *network, bushes_type *bushes, int origin,
                                  exp(theta * (bushes->SPcost[j]
                                               - bushes->SPcost[i]
                                               - network->arcs[ij].cost));
-        //printf("Computing likelihood from %d to %d based on %f - %f - %f: %f\n", i+1, j+1, bushes->SPcost[j], bushes->SPcost[i], network->arcs[ij].cost, bushes->likelihood[ij]);
     }
 
     /* 2. Compute node/link weights, starting with origin... */
@@ -238,7 +234,6 @@ void dialFlows(network_type *network, bushes_type *bushes, int origin,
             ij = ptr2arc(network, curArc->arc);
             bushes->weight[ij] = bushes->nodeWeight[i]*bushes->likelihood[ij];
         }
-        //printf("Node %d weight is %f\n", i+1, bushes->nodeWeight[i]);
     }
 
     /* 3. Now compute node/link flows, in reverse topological order */
@@ -255,7 +250,6 @@ void dialFlows(network_type *network, bushes_type *bushes, int origin,
                            0 :
                            bushes->nodeFlow[i]
                            * (bushes->weight[ij] / bushes->nodeWeight[i]);
-        //printf("Arc (%d,%d) flow is %f\n", network->arcs[ij].tail+1, network->arcs[ij].head+1, bushes->flow[ij]);
     }
     for (curnode = network->numNodes - 2; curnode >= 0; curnode--) {
         i = bushes->bushOrder[origin][curnode];
@@ -278,10 +272,6 @@ void dialFlows(network_type *network, bushes_type *bushes, int origin,
                                0 :
                                bushes->nodeFlow[i]
                                * (bushes->weight[ij] / bushes->nodeWeight[i]);
-            //printf("Arc (%d,%d) flow is %f\n", network->arcs[ij].tail+1, network->arcs[ij].head+1, bushes->flow[ij]);
         }
     }
-
-    //if (origin == 1) exit(-1);
-
 }
